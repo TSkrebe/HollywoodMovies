@@ -19,11 +19,10 @@ def graph_to_nodes_edges(data):
     for edge in g.relationships:
         sn_id = get_node_id(edge.start_node)
         en_id = get_node_id(edge.end_node)
-        #print(edge)
         edges.append({'source': sn_id, 'target': en_id, 'group': edge.type, 'role': edge['name']})
 
     return {'nodes': nodes,
-                    'links': edges}
+            'links': edges}
 
 
 def search_actor_or_director(pattern, label, limit=10):
@@ -71,11 +70,65 @@ def get_node_count(label):
 def get_role_count():
     return graph.cypher.execute_one("MATCH ()-[:ACTS_IN]->(:Movie) return count(*)")
 
+def found_movie(title):
+    g = graph.cypher.execute("MATCH (m) where m.title = {title} RETURN m LIMIT 1", title=title)
+    nodes = g.to_subgraph().nodes
+    if len(nodes) == 0:
+        return None
+    for n in nodes:
+        node = n
+    movie = {
+        'id': node['title'],
+        'title': node['title'],
+        'releaseDate': node['releaseDate'],
+        'description': node['description'],
+        'moviedb_id': node['id'],
+        'genre': node['genre'],
+        'runtime': node['runtime']
+    }
+    return movie
+
+
+def found_person(name):
+    g = graph.cypher.execute("MATCH (a:Person) WHERE a.name = {name} RETURN a LIMIT 1", name=name)
+    nodes = g.to_subgraph().nodes
+    if len(nodes) == 0:
+        return None
+
+    for n in nodes:
+        node = n
+
+    if only_person(node):
+        return None
+
+    person = {
+        "id": node['name'],
+        "name": node['name'],
+        "moviedb_id": node['id'],
+        "birthplace": node['birthplace'],
+        "biography": node['biography'],
+        "birthday": node['birthday'],
+        "group": get_node_label(node)
+    }
+
+    return person
+
+def get_node_label(node):
+    if 'Movie' in node.labels:
+        return 'Movie'
+    elif 'Director' in node.labels and 'Actor' not in node.labels:
+        return 'Director'
+    return 'Actor'
+
+
+
+def only_person(node):
+    return 'Person' in node.labels and len(node.labels) == 1
+
 
 from datetime import timedelta
 from flask import make_response, request, current_app
 from functools import update_wrapper
-
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
