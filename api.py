@@ -1,7 +1,6 @@
 from random import randint
 from flask import Blueprint
 from helper import *
-import time
 
 api = Blueprint('api', __name__, template_folder='templates')
 
@@ -82,7 +81,7 @@ def main_page_stats():
 def around_movie(title=""):
     node = found_movie(title)
     if node is None:
-        return error_response()
+        return error()
 
     g = graph.cypher.execute("MATCH p=(m)<-[]-(a) WHERE m.title = {title} AND (a:Actor OR a:Director)"
                              " return p", title=title)
@@ -98,7 +97,7 @@ def around_movie(title=""):
 def around_person(name=""):
     node = found_person(name)
     if node is None:
-        return error_response()
+        return error()
     g = graph.cypher.execute("MATCH p=(a)-[r]-(:Movie) WHERE a.name = {name} AND (a:Actor OR a:Director)"
                              " RETURN p", name=node['name'])
     data = graph_to_nodes_edges(g)
@@ -110,13 +109,12 @@ def around_person(name=""):
 @api.route('/collaborations/<first>/<second>')
 @crossdomain(origin='*')
 def collaborations(first="", second=""):
-    start = time.time()
     person1 = found_person(first)
     if person1 is None:
-        return error_response()
+        return error()
     person2 = found_person(second)
     if person2 is None:
-        return error_response()
+        return error()
 
     g = graph.cypher.execute("MATCH p=(a:Person)-[]->(:Movie)<-[]-(b:Person)"
                              " WHERE a.name = {p1} AND b.name = {p2} "
@@ -125,15 +123,9 @@ def collaborations(first="", second=""):
     data = graph_to_nodes_edges(g)
     data['person1'] = person1
     data['person2'] = person2
-    print(time.time()-start)
-
     return jsonify(data)
 
 
-def error_response():
-    response = jsonify({'message': "THIS SI ERROR"})
-    response.status_code = 400
-    return response
 
 
 
